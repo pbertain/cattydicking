@@ -106,6 +106,7 @@
         path: "{{ app_dir }}"
         production: yes
         state: present
+      become: yes
       become_user: "{{ app_user }}"
 
     - name: Create systemd service file

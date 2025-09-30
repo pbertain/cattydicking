@@ -1,13 +1,14 @@
 ---
-- name: Deploy Cattydicking Node.js Application
+- name: Deploy Cattydicking Node.js Application to Development
   hosts: all
   become: yes
   vars:
-    app_name: cattydicking
-    app_user: cattydicking
-    app_dir: /opt/{{ app_name }}
+    app_name: cattydicking-dev
+    app_user: cattydicking-dev
+    app_dir: "{{ app_dir | default('/opt/cattydicking-dev') }}"
     node_version: "20.19.5"
-    port: 61080
+    port: "{{ port | default(61081) }}"
+    domain: "{{ domain | default('dev.cattydicking.org') }}"
     
   tasks:
     - name: Update apt cache
@@ -64,7 +65,8 @@
     - name: Verify Node.js installation
       command: node --version
       register: node_version_output
-      
+      changed_when: false
+
     - name: Display Node.js version
       debug:
         msg: "Node.js version: {{ node_version_output.stdout }}"
@@ -127,39 +129,41 @@
       copy:
         content: |
           [Unit]
-          Description=Cattydicking Node.js Application
+          Description=Cattydicking Node.js Application (Development)
           After=network.target
 
           [Service]
           Type=simple
           User={{ app_user }}
           WorkingDirectory={{ app_dir }}
-          ExecStart=/usr/bin/node server.js
+          ExecStart=/usr/local/bin/node server.js
           Restart=always
           RestartSec=10
-          Environment=NODE_ENV=production
+          Environment=NODE_ENV=development
           Environment=PORT={{ port }}
 
           [Install]
           WantedBy=multi-user.target
         dest: /etc/systemd/system/{{ app_name }}.service
         mode: '0644'
+      become: yes
 
     - name: Reload systemd daemon
       systemd:
         daemon_reload: yes
+      become: yes
 
     - name: Enable and start {{ app_name }} service
       systemd:
         name: "{{ app_name }}"
         enabled: yes
         state: started
-
+      become: yes
 
     - name: Wait for service to be ready
       wait_for:
         port: "{{ port }}"
-        host: "{{ ansible_default_ipv4.address }}"
+        host: "127.0.0.1"
         delay: 5
         timeout: 30
 
@@ -167,6 +171,7 @@
       systemd:
         name: "{{ app_name }}"
       register: service_status
+      become: yes
 
     - name: Show service status
       debug:
@@ -174,4 +179,4 @@
 
     - name: Display application URL
       debug:
-        msg: "Application is available at http://{{ ansible_default_ipv4.address }}:{{ port }}"
+        msg: "Development application is available at http://{{ domain }}:{{ port }}"

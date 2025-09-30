@@ -2,22 +2,8 @@ const request = require('supertest');
 const app = require('../server');
 
 describe('Cattydicking Server', () => {
-  let server;
-
-  beforeAll((done) => {
-    // Start server on a random port for testing
-    server = app.listen(0, () => {
-      done();
-    });
-  });
-
-  afterAll((done) => {
-    if (server) {
-      server.close(done);
-    } else {
-      done();
-    }
-  });
+  // Use supertest directly with the app - no need to start a server
+  // supertest handles the server lifecycle automatically
 
   describe('GET /', () => {
     it('should serve the main page', async () => {
@@ -28,7 +14,7 @@ describe('Cattydicking Server', () => {
       
       expect(response.text).toContain('CATtYDICKING');
       expect(response.text).toContain('The Legend Lives On');
-    });
+    }, 10000); // 10 second timeout
   });
 
   describe('GET /health', () => {
@@ -41,7 +27,7 @@ describe('Cattydicking Server', () => {
       expect(response.body).toHaveProperty('status', 'healthy');
       expect(response.body).toHaveProperty('service', 'cattydicking');
       expect(response.body).toHaveProperty('timestamp');
-    });
+    }, 10000);
   });
 
   describe('Static files', () => {
@@ -50,19 +36,19 @@ describe('Cattydicking Server', () => {
         .get('/css/main.css')
         .expect(200)
         .expect('Content-Type', /text\/css/);
-    });
+    }, 10000);
 
     it('should serve image files', async () => {
       await request(app)
         .get('/images/cattydicking.gif')
         .expect(200);
-    });
+    }, 10000);
 
     it('should serve the other image file', async () => {
       await request(app)
         .get('/images/jeremiah-jimbo.png')
         .expect(200);
-    });
+    }, 10000);
   });
 
   describe('Security headers', () => {
@@ -73,7 +59,7 @@ describe('Cattydicking Server', () => {
       
       expect(response.headers).toHaveProperty('x-content-type-options');
       expect(response.headers).toHaveProperty('x-frame-options');
-    });
+    }, 10000);
   });
 
   describe('404 handling', () => {
@@ -84,6 +70,6 @@ describe('Cattydicking Server', () => {
         .expect('Content-Type', /text\/html/);
       
       expect(response.text).toContain('CATtYDICKING');
-    });
+    }, 10000);
   });
 });

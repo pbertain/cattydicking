@@ -1,16 +1,16 @@
-name: Deploy to Production
+name: Deploy to Development
 
 on:
   push:
-    branches: [ main ]
+    branches: [ dev ]
   workflow_run:
     workflows: ["CI/CD Pipeline"]
-    branches: [ main ]
+    branches: [ dev ]
     types: [ completed ]
   workflow_dispatch:
 
 jobs:
-  deploy:
+  deploy-dev:
     runs-on: ubuntu-latest
     if: github.event_name == 'workflow_run' ? github.event.workflow_run.conclusion == 'success' : true
     
@@ -29,7 +29,7 @@ jobs:
         npm cache clean --force
         npm config set registry https://registry.npmjs.org/
         npm install
-      
+        
     - name: Run final tests before deployment
       run: npm test
       
@@ -45,18 +45,22 @@ jobs:
         chmod 600 ~/.ssh/deploy_key
         ssh-keyscan -H host74.nird.club >> ~/.ssh/known_hosts
         
-    - name: Deploy with Ansible
+    - name: Deploy to development with Ansible
       run: |
         ansible-playbook \
           --private-key ~/.ssh/deploy_key \
           -u ansible \
           -i playbooks/inventory.ini \
-          playbooks/cattydicking-ansible.yml \
-          --limit host74.nird.club
+          playbooks/cattydicking-dev-ansible.yml \
+          --limit host74.nird.club \
+          -e "app_dir=/opt/cattydicking-dev" \
+          -e "app_user=cattydicking-dev" \
+          -e "port=61081" \
+          -e "domain=dev.cattydicking.org"
       env:
         ANSIBLE_HOST_KEY_CHECKING: False
         
-    - name: Verify deployment
+    - name: Verify development deployment
       run: |
         sleep 30
-        curl -f http://host74.nird.club:61080/health || exit 1
+        curl -f http://host74.nird.club:61081/health || exit 1

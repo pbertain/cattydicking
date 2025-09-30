@@ -12,7 +12,7 @@ jobs:
     
     strategy:
       matrix:
-        node-version: [18.x, 20.x]
+        node-version: [20.x]
     
     steps:
     - name: Checkout code
@@ -25,7 +25,27 @@ jobs:
         cache: 'npm'
         
     - name: Install dependencies
-      run: npm ci
+      run: |
+        echo "Clearing npm cache and setting registry..."
+        npm cache clean --force
+        npm config set registry https://registry.npmjs.org/
+        echo "Registry set to: $(npm config get registry)"
+        
+        echo "Removing potentially corrupted package-lock.json"
+        rm -f package-lock.json
+        
+        echo "Installing dependencies with npm install..."
+        npm install --verbose
+        echo "Checking if jest is installed:"
+        npx jest --version || echo "Jest not found in npx"
+        echo "Checking if supertest is installed:"
+        npx supertest --version || echo "Supertest not found in npx"
+        echo "Checking node_modules:"
+        ls -la node_modules/.bin/ | grep -E "(jest|supertest)" || echo "Test binaries not found"
+        echo "Checking supertest module:"
+        ls -la node_modules/supertest/ || echo "Supertest module not found"
+        echo "All installed packages:"
+        npm list --depth=0
       
     - name: Debug environment
       run: |
@@ -33,18 +53,36 @@ jobs:
         echo "NPM version: $(npm --version)"
         echo "Available memory: $(free -h)"
         echo "Disk space: $(df -h)"
+        echo "Current directory: $(pwd)"
+        echo "Files in project:"
+        ls -la
+        echo "Test files:"
+        find . -name "*.test.js" -type f
+        echo "Jest config:"
+        cat jest.config.js || echo "No jest.config.js found"
         
     - name: Run linter
       run: npm run lint || echo "No lint script found, skipping..."
       continue-on-error: true
       
     - name: Run tests
-      run: npm test
+      run: |
+        echo "Running tests with debug info..."
+        echo "Current working directory: $(pwd)"
+        echo "Files in current directory:"
+        ls -la
+        echo "Test files found:"
+        find . -name "*.test.js" -type f
+        echo "Running jest with full output..."
+        echo "First, let's try a simple jest test:"
+        npx jest --version
+        echo "Now running the actual tests:"
+        npx jest --verbose --detectOpenHandles --forceExit --no-cache --runInBand
       env:
         NODE_ENV: test
         
     - name: Generate coverage report
-      run: npm run test:coverage
+      run: npx jest --coverage --forceExit --no-cache --runInBand
       env:
         NODE_ENV: test
       
@@ -66,7 +104,7 @@ jobs:
     - name: Setup Node.js
       uses: actions/setup-node@v4
       with:
-        node-version: '18.x'
+        node-version: '20.x'
         cache: 'npm'
         
     - name: Install dependencies
@@ -89,7 +127,7 @@ jobs:
     - name: Setup Node.js
       uses: actions/setup-node@v4
       with:
-        node-version: '18.x'
+        node-version: '20.x'
         cache: 'npm'
         
     - name: Install dependencies

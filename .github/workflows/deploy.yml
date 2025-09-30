@@ -1,0 +1,43 @@
+name: Deploy to Production
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Ansible
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y ansible
+        
+    - name: Create Ansible inventory
+      run: |
+        mkdir -p ~/.ssh
+        echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
+        chmod 600 ~/.ssh/deploy_key
+        ssh-keyscan -H host74.nird.club >> ~/.ssh/known_hosts
+        
+    - name: Deploy with Ansible
+      run: |
+        ansible-playbook \
+          --private-key ~/.ssh/deploy_key \
+          -u ansible \
+          -i playbooks/inventory.ini \
+          playbooks/cattydicking-ansible.yml \
+          --limit host74.nird.club
+      env:
+        ANSIBLE_HOST_KEY_CHECKING: False
+        
+    - name: Verify deployment
+      run: |
+        sleep 30
+        curl -f http://host74.nird.club:61080/health || exit 1

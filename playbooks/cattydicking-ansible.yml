@@ -1,0 +1,128 @@
+---
+- name: Deploy Cattydicking Node.js Application
+  hosts: all
+  become: yes
+  vars:
+    app_name: cattydicking
+    app_user: cattydicking
+    app_dir: /opt/{{ app_name }}
+    node_version: "18"
+    port: 61080
+    
+  tasks:
+    - name: Update apt cache
+      apt:
+        update_cache: yes
+        cache_valid_time: 3600
+
+    - name: Install required packages
+      apt:
+        name:
+          - curl
+          - git
+          - nginx
+        state: present
+
+    - name: Install NodeSource Node.js repository
+      shell: |
+        curl -fsSL https://deb.nodesource.com/setup_{{ node_version }}.x | bash -
+      args:
+        creates: /etc/apt/sources.list.d/nodesource.list
+
+    - name: Install Node.js
+      apt:
+        name: nodejs
+        state: present
+        update_cache: yes
+
+    - name: Create application user
+      user:
+        name: "{{ app_user }}"
+        system: yes
+        shell: /bin/bash
+        home: "{{ app_dir }}"
+        create_home: yes
+
+    - name: Create application directory
+      file:
+        path: "{{ app_dir }}"
+        state: directory
+        owner: "{{ app_user }}"
+        group: "{{ app_user }}"
+        mode: '0755'
+
+    - name: Copy application files
+      copy:
+        src: "{{ item }}"
+        dest: "{{ app_dir }}/{{ item }}"
+        owner: "{{ app_user }}"
+        group: "{{ app_user }}"
+        mode: '0644'
+      with_fileglob:
+        - "*.js"
+        - "*.json"
+        - "*.html"
+        - "css/*"
+        - "images/*"
+        - ".gitignore"
+        - "LICENSE"
+
+    - name: Install Node.js dependencies
+      npm:
+        path: "{{ app_dir }}"
+        production: yes
+        state: present
+      become_user: "{{ app_user }}"
+
+    - name: Create systemd service file
+      copy:
+        content: |
+          [Unit]
+          Description=Cattydicking Node.js Application
+          After=network.target
+
+          [Service]
+          Type=simple
+          User={{ app_user }}
+          WorkingDirectory={{ app_dir }}
+          ExecStart=/usr/bin/node server.js
+          Restart=always
+          RestartSec=10
+          Environment=NODE_ENV=production
+          Environment=PORT={{ port }}
+
+          [Install]
+          WantedBy=multi-user.target
+        dest: /etc/systemd/system/{{ app_name }}.service
+        mode: '0644'
+
+    - name: Reload systemd daemon
+      systemd:
+        daemon_reload: yes
+
+    - name: Enable and start {{ app_name }} service
+      systemd:
+        name: "{{ app_name }}"
+        enabled: yes
+        state: started
+
+
+    - name: Wait for service to be ready
+      wait_for:
+        port: "{{ port }}"
+        host: "{{ ansible_default_ipv4.address }}"
+        delay: 5
+        timeout: 30
+
+    - name: Display service status
+      systemd:
+        name: "{{ app_name }}"
+      register: service_status
+
+    - name: Show service status
+      debug:
+        var: service_status.status.ActiveState
+
+    - name: Display application URL
+      debug:
+        msg: "Application is available at http://{{ ansible_default_ipv4.address }}:{{ port }}"

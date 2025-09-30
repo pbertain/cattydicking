@@ -33,13 +33,22 @@ jobs:
         echo "NPM version: $(npm --version)"
         echo "Available memory: $(free -h)"
         echo "Disk space: $(df -h)"
+        echo "Current directory: $(pwd)"
+        echo "Files in project:"
+        ls -la
+        echo "Test files:"
+        find . -name "*.test.js" -type f
+        echo "Jest config:"
+        cat jest.config.js || echo "No jest.config.js found"
         
     - name: Run linter
       run: npm run lint || echo "No lint script found, skipping..."
       continue-on-error: true
       
     - name: Run tests
-      run: npm test
+      run: |
+        echo "Running tests with debug info..."
+        npm test -- --verbose --detectOpenHandles
       env:
         NODE_ENV: test
         

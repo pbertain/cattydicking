@@ -5,10 +5,10 @@
   vars:
     app_name: cattydicking-dev
     app_user: cattydicking-dev
-    app_dir: "{{ app_dir | default('/opt/cattydicking-dev') }}"
+    app_dir: '/opt/cattydicking-dev'
     node_version: "20.19.5"
-    port: "{{ port | default(61081) }}"
-    domain: "{{ domain | default('dev.cattydicking.org') }}"
+    port: 61081
+    domain: 'dev.cattydicking.org'
     
   tasks:
     - name: Update apt cache

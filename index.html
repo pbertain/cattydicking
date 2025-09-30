@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Cattydicking</title>
+  <link href="https://fonts.googleapis.com/css2?family=IM+Fell+English+SC&family=Roboto:wght@400&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/main.css">
+</head>
+<body>
+  <header>
+    CATtYDICKING
+  </header>
+  <div class="container">
+    <div class="panel">
+      <img src="images/jeremiah-jimbo.png" alt="Mysterious Portrait">
+      <div class="caption" id="rotating-quote"></div>
+    </div>
+    <div class="panel">
+      <img src="images/cattydicking.gif" alt="Cat Drawing">
+      <div class="caption">
+        "You know... Cattydicking!"
+      </div>
+    </div>
+  </div>
+  <footer>
+    The Legend Lives On &mdash; Est. 1839
+  </footer>
+  <script>
+    const quotes = [
+      "Poor Jeremiah... people used to make fun of him for having a really strange form for cattle wrangling. He had like a slow flat awkward release, and the bulls would often find the rope missed their horns entirely.",
+      "He would keep a-ropin’ even as the other rustlers cursed under their hats ... Ole Jebediah would keep flinging out his lasso",
+      "Some people called him Jebediah. Others Jeremiah. Most didn't care as long as he didn't stare at them. Or talk to them.",
+      "He would have a new mail-order bride every other cattle season and teach their kids the wrong way to wrassle while the other cow folk watched with interest as well as shock. Mostly they just cringed.",
+      "He would \"take notes\" and \"share his insight\" to the other folks, who generally didn't understand if he knew the point of cattle roping.",
+      "He is truly the inspiration for cattydicking. A term coined in 1839 in the old west specifically for Jebediah... Jeremiah... whatever Jimbo."
+    ];
+    let i = 0;
+    function rotateQuotes() {
+      document.getElementById('rotating-quote').innerText = quotes[i];
+      i = (i + 1) % quotes.length;
+    }
+    rotateQuotes();
+    setInterval(rotateQuotes, 5000);
+  </script>
+</body>
+</html>
+

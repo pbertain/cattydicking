@@ -23,17 +23,51 @@
           - nginx
         state: present
 
-    - name: Install NodeSource Node.js repository
-      shell: |
-        curl -fsSL https://deb.nodesource.com/setup_{{ node_version }}.x | bash -
-      args:
-        creates: /etc/apt/sources.list.d/nodesource.list
+    - name: Download Node.js binary
+      get_url:
+        url: "https://nodejs.org/dist/v{{ node_version }}.0/node-v{{ node_version }}.0-linux-x64.tar.xz"
+        dest: "/tmp/node-v{{ node_version }}.0-linux-x64.tar.xz"
+        mode: '0644'
 
-    - name: Install Node.js
-      apt:
-        name: nodejs
-        state: present
-        update_cache: yes
+    - name: Extract Node.js
+      unarchive:
+        src: "/tmp/node-v{{ node_version }}.0-linux-x64.tar.xz"
+        dest: "/usr/local"
+        remote_src: yes
+        creates: "/usr/local/node-v{{ node_version }}.0-linux-x64"
+
+    - name: Create symlinks for Node.js
+      file:
+        src: "/usr/local/node-v{{ node_version }}.0-linux-x64/bin/{{ item }}"
+        dest: "/usr/local/bin/{{ item }}"
+        state: link
+      loop:
+        - node
+        - npm
+        - npx
+
+    - name: Clean up Node.js archive
+      file:
+        path: "/tmp/node-v{{ node_version }}.0-linux-x64.tar.xz"
+        state: absent
+
+    - name: Clean up any existing Node.js installations in /opt/
+      file:
+        path: "{{ item }}"
+        state: absent
+      loop:
+        - "/opt/node-v{{ node_version }}.0-linux-x64"
+        - "/opt/node-v20.18.0-linux-x64"
+        - "/opt/node-v18.0.0-linux-x64"
+      ignore_errors: yes
+
+    - name: Verify Node.js installation
+      command: node --version
+      register: node_version_output
+      
+    - name: Display Node.js version
+      debug:
+        msg: "Node.js version: {{ node_version_output.stdout }}"
 
     - name: Create application user
       user:

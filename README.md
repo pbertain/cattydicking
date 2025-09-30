@@ -61,3 +61,9 @@ ansible-playbook --ask-vault-pass -u ansible --private-key ~/.ssh/keys/nirdclub_
 ## License
 
 MIT License - see LICENSE file for details.
+# Test PR Deploy Flow
+
+This is a test commit to verify the GitHub Actions deployment workflow works properly.
+
+- Added test comment to verify CI/CD pipeline
+- Should trigger deployment after merge to main

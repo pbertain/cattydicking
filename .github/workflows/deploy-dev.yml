@@ -1,0 +1,66 @@
+name: Deploy to Development
+
+on:
+  push:
+    branches: [ dev ]
+  workflow_run:
+    workflows: ["CI/CD Pipeline"]
+    branches: [ dev ]
+    types: [ completed ]
+  workflow_dispatch:
+
+jobs:
+  deploy-dev:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_run' ? github.event.workflow_run.conclusion == 'success' : true
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20.x'
+        cache: 'npm'
+        
+    - name: Install dependencies
+      run: |
+        npm cache clean --force
+        npm config set registry https://registry.npmjs.org/
+        npm install
+        
+    - name: Run final tests before deployment
+      run: npm test
+      
+    - name: Setup Ansible
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y ansible
+        
+    - name: Create Ansible inventory
+      run: |
+        mkdir -p ~/.ssh
+        echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
+        chmod 600 ~/.ssh/deploy_key
+        ssh-keyscan -H host74.nird.club >> ~/.ssh/known_hosts
+        
+    - name: Deploy to development with Ansible
+      run: |
+        ansible-playbook \
+          --private-key ~/.ssh/deploy_key \
+          -u ansible \
+          -i playbooks/inventory.ini \
+          playbooks/cattydicking-dev-ansible.yml \
+          --limit host74.nird.club \
+          -e "app_dir=/opt/cattydicking-dev" \
+          -e "app_user=cattydicking-dev" \
+          -e "port=61081" \
+          -e "domain=dev.cattydicking.org"
+      env:
+        ANSIBLE_HOST_KEY_CHECKING: False
+        
+    - name: Verify development deployment
+      run: |
+        sleep 30
+        curl -f http://host74.nird.club:61081/health || exit 1

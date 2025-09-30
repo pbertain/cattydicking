@@ -1,0 +1,182 @@
+---
+- name: Deploy Cattydicking Node.js Application to Development
+  hosts: all
+  become: yes
+  vars:
+    app_name: cattydicking-dev
+    app_user: cattydicking-dev
+    app_dir: "{{ app_dir | default('/opt/cattydicking-dev') }}"
+    node_version: "20.19.5"
+    port: "{{ port | default(61081) }}"
+    domain: "{{ domain | default('dev.cattydicking.org') }}"
+    
+  tasks:
+    - name: Update apt cache
+      apt:
+        update_cache: yes
+        cache_valid_time: 3600
+
+    - name: Install required packages
+      apt:
+        name:
+          - curl
+          - git
+          - nginx
+        state: present
+
+    - name: Download Node.js binary
+      get_url:
+        url: "https://nodejs.org/dist/v{{ node_version }}/node-v{{ node_version }}-linux-x64.tar.xz"
+        dest: "/tmp/node-v{{ node_version }}-linux-x64.tar.xz"
+        mode: '0644'
+
+    - name: Extract Node.js
+      unarchive:
+        src: "/tmp/node-v{{ node_version }}-linux-x64.tar.xz"
+        dest: "/usr/local"
+        remote_src: yes
+        creates: "/usr/local/node-v{{ node_version }}-linux-x64"
+
+    - name: Create symlinks for Node.js
+      file:
+        src: "/usr/local/node-v{{ node_version }}-linux-x64/bin/{{ item }}"
+        dest: "/usr/local/bin/{{ item }}"
+        state: link
+      loop:
+        - node
+        - npm
+        - npx
+
+    - name: Clean up Node.js archive
+      file:
+        path: "/tmp/node-v{{ node_version }}-linux-x64.tar.xz"
+        state: absent
+
+    - name: Clean up any existing Node.js installations in /opt/
+      file:
+        path: "{{ item }}"
+        state: absent
+      loop:
+        - "/opt/node-v{{ node_version }}-linux-x64"
+        - "/opt/node-v20.18.0-linux-x64"
+        - "/opt/node-v18.0.0-linux-x64"
+      ignore_errors: yes
+
+    - name: Verify Node.js installation
+      command: node --version
+      register: node_version_output
+      changed_when: false
+
+    - name: Display Node.js version
+      debug:
+        msg: "Node.js version: {{ node_version_output.stdout }}"
+
+    - name: Create application user
+      user:
+        name: "{{ app_user }}"
+        system: yes
+        shell: /bin/bash
+        home: "{{ app_dir }}"
+        create_home: yes
+
+    - name: Create application directory
+      file:
+        path: "{{ app_dir }}"
+        state: directory
+        owner: "{{ app_user }}"
+        group: "{{ app_user }}"
+        mode: '0755'
+
+    - name: Copy application files
+      synchronize:
+        src: "{{ playbook_dir }}/../"
+        dest: "{{ app_dir }}/"
+        delete: yes
+        recursive: yes
+        rsync_opts:
+          - "--exclude=playbooks/"
+          - "--exclude=.git/"
+          - "--exclude=node_modules/"
+          - "--exclude=.github/"
+          - "--exclude=tests/"
+          - "--exclude=coverage/"
+      become: yes
+
+    - name: Set ownership of copied files
+      file:
+        path: "{{ app_dir }}"
+        owner: "{{ app_user }}"
+        group: "{{ app_user }}"
+        recurse: yes
+      become: yes
+
+    - name: Install Node.js dependencies
+      npm:
+        path: "{{ app_dir }}"
+        production: yes
+        state: present
+      become: yes
+
+    - name: Change ownership of node_modules to application user
+      file:
+        path: "{{ app_dir }}/node_modules"
+        owner: "{{ app_user }}"
+        group: "{{ app_user }}"
+        recurse: yes
+      become: yes
+
+    - name: Create systemd service file
+      copy:
+        content: |
+          [Unit]
+          Description=Cattydicking Node.js Application (Development)
+          After=network.target
+
+          [Service]
+          Type=simple
+          User={{ app_user }}
+          WorkingDirectory={{ app_dir }}
+          ExecStart=/usr/local/bin/node server.js
+          Restart=always
+          RestartSec=10
+          Environment=NODE_ENV=development
+          Environment=PORT={{ port }}
+
+          [Install]
+          WantedBy=multi-user.target
+        dest: /etc/systemd/system/{{ app_name }}.service
+        mode: '0644'
+      become: yes
+
+    - name: Reload systemd daemon
+      systemd:
+        daemon_reload: yes
+      become: yes
+
+    - name: Enable and start {{ app_name }} service
+      systemd:
+        name: "{{ app_name }}"
+        enabled: yes
+        state: started
+      become: yes
+
+    - name: Wait for service to be ready
+      wait_for:
+        port: "{{ port }}"
+        host: "127.0.0.1"
+        delay: 5
+        timeout: 30
+
+    - name: Display service status
+      systemd:
+        name: "{{ app_name }}"
+      register: service_status
+      become: yes
+
+    - name: Show service status
+      debug:
+        var: service_status.status.ActiveState
+
+    - name: Display application URL
+      debug:
+        msg: "Development application is available at http://{{ domain }}:{{ port }}"

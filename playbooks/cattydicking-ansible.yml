@@ -93,13 +93,13 @@
         group: "{{ app_user }}"
         mode: '0644'
       with_fileglob:
-        - "*.js"
-        - "*.json"
-        - "*.html"
-        - "css/*"
-        - "images/*"
-        - ".gitignore"
-        - "LICENSE"
+        - "../*.js"
+        - "../*.json"
+        - "../*.html"
+        - "../css/*"
+        - "../images/*"
+        - "../.gitignore"
+        - "../LICENSE"
 
     - name: Install Node.js dependencies
       npm:

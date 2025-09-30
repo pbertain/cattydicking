@@ -86,20 +86,27 @@
         mode: '0755'
 
     - name: Copy application files
-      copy:
-        src: "{{ item }}"
-        dest: "{{ app_dir }}/{{ item }}"
+      synchronize:
+        src: "{{ playbook_dir }}/../"
+        dest: "{{ app_dir }}/"
+        delete: yes
+        recursive: yes
+        rsync_opts:
+          - "--exclude=playbooks/"
+          - "--exclude=.git/"
+          - "--exclude=node_modules/"
+          - "--exclude=.github/"
+          - "--exclude=tests/"
+          - "--exclude=coverage/"
+      become: yes
+
+    - name: Set ownership of copied files
+      file:
+        path: "{{ app_dir }}"
         owner: "{{ app_user }}"
         group: "{{ app_user }}"
-        mode: '0644'
-      with_fileglob:
-        - "../*.js"
-        - "../*.json"
-        - "../*.html"
-        - "../css/*"
-        - "../images/*"
-        - "../.gitignore"
-        - "../LICENSE"
+        recurse: yes
+      become: yes
 
     - name: Install Node.js dependencies
       npm:

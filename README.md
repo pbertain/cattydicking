@@ -67,3 +67,9 @@ This is a test commit to verify the GitHub Actions deployment workflow works pro
 
 - Added test comment to verify CI/CD pipeline
 - Should trigger deployment after merge to main
+
+
+## Dev Environment Test
+- Testing dev deployment to dev.cattydicking.org:61081
+- Deployed from dev branch at Tue Sep 30 13:20:02 PDT 2025
+- Should be running on /opt/cattydicking-dev

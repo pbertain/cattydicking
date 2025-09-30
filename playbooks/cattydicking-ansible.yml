@@ -107,7 +107,14 @@
         production: yes
         state: present
       become: yes
-      become_user: "{{ app_user }}"
+
+    - name: Change ownership of node_modules to application user
+      file:
+        path: "{{ app_dir }}/node_modules"
+        owner: "{{ app_user }}"
+        group: "{{ app_user }}"
+        recurse: yes
+      become: yes
 
     - name: Create systemd service file
       copy:

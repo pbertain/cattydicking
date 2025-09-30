@@ -5,13 +5,18 @@ describe('Cattydicking Server', () => {
   let server;
 
   beforeAll((done) => {
+    // Start server on a random port for testing
     server = app.listen(0, () => {
       done();
     });
   });
 
   afterAll((done) => {
-    server.close(done);
+    if (server) {
+      server.close(done);
+    } else {
+      done();
+    }
   });
 
   describe('GET /', () => {
